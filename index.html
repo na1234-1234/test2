@@ -43,7 +43,7 @@
                 statusDiv.innerText = "正在下載現代化 AI 聊天腦袋 (Qwen 90MB)...";
                 
                 // 換成阿里開源、支援對話格式的輕量模型
-                generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.3B-Chat');
+                generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
                 
                 statusDiv.innerText = "✅ AI 聊天模型已成功載入！它現在就在你部電腦裡面。";
                 statusDiv.style.backgroundColor = "#d4edda";
