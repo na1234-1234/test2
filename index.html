@@ -1,93 +1,141 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>純前端真正可用 LLM 對話測試</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tutor - Verifier-in-the-Loop Diagnostic</title>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; text-align: center; }
-        input { width: 80%; padding: 12px; font-size: 16px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 24px; font-size: 16px; cursor: pointer; background: #007BFF; color: white; border: none; border-radius: 4px; font-weight: bold; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #status { font-weight: bold; color: #666; margin: 15px 0; background: #fff3cd; padding: 10px; border-radius: 4px; }
-        #chatbox { margin-top: 30px; padding: 20px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; text-align: left; min-height: 60px; line-height: 1.5; }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 1000px; margin: 40px auto; padding: 20px; background-color: #f8f9fa; color: #212529; }
+        h2 { color: #0d6efd; margin-bottom: 5px; }
+        .subtitle { color: #6c757d; margin-bottom: 30px; }
+        .container { display: flex; gap: 20px; text-align: left; }
+        .column { flex: 1; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #dee2e6; }
+        h3 { margin-top: 0; border-bottom: 2px solid #f1f3f5; padding-bottom: 10px; font-size: 18px; }
+        textarea { width: 100%; height: 280px; padding: 12px; font-family: monospace; font-size: 14px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; resize: vertical; }
+        button { width: 100%; padding: 14px; font-size: 16px; cursor: pointer; background: #0d6efd; color: white; border: none; border-radius: 4px; font-weight: bold; margin-top: 15px; transition: background 0.2s; }
+        button:hover { background: #0b5ed7; }
+        button:disabled { background: #ced4da; cursor: not-allowed; }
+        #status { font-weight: bold; margin-bottom: 20px; background: #fff3cd; color: #664d03; padding: 12px; border-radius: 6px; border-left: 4px solid #ffc107; text-align: center; }
+        #output-box { background: #f8f9fa; border-left: 4px solid #0d6efd; padding: 15px; border-radius: 4px; min-height: 150px; white-space: pre-wrap; line-height: 1.6; }
+        #debug-box { margin-top: 20px; background: #e9ecef; padding: 12px; border-radius: 4px; font-family: monospace; font-size: 11px; color: #495057; display: none; }
     </style>
 </head>
 <body>
 
-    <h2>🤖 100% 本地智能對話測試 (Qwen)</h2>
-    <p>完全不用 API Key。這是一個真正能聽懂人話的 Chat 模型！</p>
+    <h2>🎓 Verifier-in-the-Loop Diagnostic System</h2>
+    <p class="subtitle">100% Client-Side Edge AI Core. No API Keys required. Optimized for Google Translate.</p>
 
-    <div id="status">正在初始環境中... 請稍候...</div>
+    <div id="status">Initializing WebAssembly runtime environment... Please wait...</div>
 
-    <input type="text" id="userInput" value="Hi" placeholder="同 AI 講句嘢...">
-    <br>
-    <button id="sendBtn" onclick="generateText()" disabled>等待 AI 準備就緒</button>
+    <div class="container">
+        <div class="column">
+            <h3>📝 Code Input Workspace</h3>
+            <p style="font-size: 13px; color: #6c757d; margin-top: -5px;">Simulate a student's buggy Python script below:</p>
+            <textarea id="userInput">scores = [85, 92, 78]
+for i in range(4):
+    print(scores[i])</textarea>
+            <button id="sendBtn" onclick="generateDiagnostic()" disabled>Waiting for AI Engine...</button>
+        </div>
 
-    <div id="chatbox"><b>AI 真正回覆：</b> <br><span id="aiReply">等待發送指令...</span></div>
+        <div class="column">
+            <h3>🤖 AI Tutor Diagnostic Feedback</h3>
+            <div id="output-box">The diagnostic results will appear here once you run the code verification loop.</div>
+            
+            <div id="debug-box"><b>[System Token Diagnostic Matrix]</b><br><span id="rawResponse"></span></div>
+        </div>
+    </div>
 
     <script type="module">
         import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-        // 穩定安全設定
+        // Enforce strict single-threaded execution to completely bypass browser sandbox blockades
         env.backends.onnx.wasm.numThreads = 1;
         env.allowLocalModels = false;
 
         let generator = null;
         const statusDiv = document.getElementById('status');
         const sendBtn = document.getElementById('sendBtn');
-        const outputDiv = document.getElementById('aiReply');
+        const outputDiv = document.getElementById('output-box');
+        const debugBox = document.getElementById('debug-box');
+        const rawResponseSpan = document.getElementById('rawResponse');
 
-        // 初始化：正式載入通訊、聊天能力強大的 Qwen 0.5B 模型
+        // Initialize the highly stable English structural Chat model
         async function initAI() {
             try {
-                statusDiv.innerText = "正在下載現代化 AI 聊天腦袋 (Qwen 90MB)...";
+                statusDiv.innerText = "⏳ Downloading ultra-lean AI core (Qwen 90MB) directly to browser memory...";
                 
-                // 換成阿里開源、支援對話格式的輕量模型
                 generator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
                 
-                statusDiv.innerText = "✅ AI 聊天模型已成功載入！它現在就在你部電腦裡面。";
-                statusDiv.style.backgroundColor = "#d4edda";
-                statusDiv.style.color = "#155724";
+                statusDiv.innerText = "✅ AI Engine is fully operational! Processing is running locally on your hardware.";
+                statusDiv.style.backgroundColor = "#d1e7dd";
+                statusDiv.style.color = "#0f5132";
+                statusDiv.style.borderLeft = "4px solid #198754";
                 sendBtn.disabled = false;
-                sendBtn.innerText = "叫 AI 回覆";
+                sendBtn.innerText = "▶️ Run Code Verification";
             } catch (err) {
-                console.error("Qwen 載入出錯:", err);
-                statusDiv.innerText = "❌ 載入失敗: " + (err ? err.message : "未知錯誤");
+                console.error("AI Core initialization failed:", err);
+                statusDiv.innerText = "❌ Core Initialization Error: " + (err ? err.message : "Memory allocation blocked");
                 statusDiv.style.backgroundColor = "#f8d7da";
+                statusDiv.style.color = "#842029";
+                statusDiv.style.borderLeft = "4px solid #dc3545";
             }
         }
 
-        // 對話生成邏輯
-        window.generateText = async function() {
-            const input = document.getElementById('userInput').value;
-            if (!input) return alert("請輸入內容");
+        // Diagnostic Logic
+        window.generateDiagnostic = async function() {
+            const codeInput = document.getElementById('userInput').value;
+            if (!codeInput.strip) {
+                if (!codeInput.trim()) return alert("Code workspace cannot be empty!");
+            }
 
             sendBtn.disabled = true;
-            sendBtn.innerText = "AI 思考中...";
-            outputDiv.innerText = "AI 正在用你部電腦嘅硬件計算緊...";
+            sendBtn.innerText = "AI Inferencing...";
+            outputDiv.innerHTML = "<em>AI is executing local matrix calculations on your CPU... Please wait...</em>";
+            debugBox.style.display = "none";
 
             try {
-                // 套用 Qwen 官方標準對話模板（Chat Prompt Template），強迫它進入對話模式
-                const prompt = `<|im_start|>user\n${input}<|im_end|>\n<|im_start|>assistant\n`;
+                // Mocking the code execution error logs that your python script natively captures
+                const simulatedErrorLog = "IndexError: list index out of range on line 3";
 
-                const response = await generator(prompt, { 
-                    max_new_tokens: 50,
-                    temperature: 0.6, // 稍微降低隨機性，讓回答更正經
+                // Formulate an absolute airtight English prompt optimized for micro LLM architecture
+                const systemInstruction = 
+                    "You are an elite programming tutor. You must output a structured diagnostic response using exactly these three headings:\n" +
+                    "[Error Location] State which logic pattern or barrier failed.\n" +
+                    "[Concept Explanation] Explain the core logic rule using plain, conversational English sentences.\n" +
+                    "[Analogy] Provide a simple real-world human analogy to explain why the code broke.\n" +
+                    "CRITICAL: Do NOT print code syntax, equal signs, brackets, code blocks or the student's variable names in your explanation.";
+
+                const prompt = `<|im_start|>system\n${systemInstruction}<|im_end|>\n<|im_start|>user\nStudent Code:\n${codeInput}\n\nError Log:\n${simulatedErrorLog}<|im_end|>\n<|im_start|>assistant\n`;
+
+                const response = await generator(prompt, {{ 
+                    max_new_tokens: 180,
+                    temperature: 0.2, // Keeps the model strict, fast, and structured
                     return_full_text: false 
-                });
+                }});
 
                 if (response && response[0] && response[0].generated_text) {
-                    // 順便把模型可能多吐出來的結束標籤裁切乾淨
-                    let reply = response[0].generated_text.split('<|im_end|>')[0].trim();
-                    outputDiv.innerText = reply;
+                    let cleanedReply = response[0].generated_text.split('<|im_end|>')[0].trim();
+                    
+                    // Render formatting elements cleanly for reading or translation engines
+                    let structuredHTML = cleanedReply
+                        .replace(/\[Error Location\]/g, '<b style="color:#dc3545; font-size:16px;">📍 Error Location</b><br>')
+                        .replace(/\[Concept Explanation\]/g, '<br><br><b style="color:#0d6efd; font-size:16px;">💡 Concept Explanation</b><br>')
+                        .replace(/\[Analogy\]/g, '<br><br><b style="color:#198754; font-size:16px;">🌟 Real-World Analogy</b><br>')
+                        .replace(/\n/g, '<br>');
+
+                    outputDiv.innerHTML = structuredHTML;
+                    
+                    // Show debug info for PhD thesis tracing
+                    rawResponseSpan.innerText = cleanedReply;
+                    debugBox.style.display = "block";
                 } else {
-                    outputDiv.innerText = "AI 聽到了，但它吐出了一片空白。";
+                    outputDiv.innerText = "⚠️ AI executed but returned an empty response stack.";
                 }
             } catch (err) {
-                outputDiv.innerText = "❌ 生成失敗: " + err.message;
+                outputDiv.innerText = "❌ Generation Loop Failed: " + err.message;
             } finally {
                 sendBtn.disabled = false;
-                sendBtn.innerText = "叫 AI 回覆";
+                sendBtn.innerText = "▶️ Run Code Verification";
             }
         }
 
