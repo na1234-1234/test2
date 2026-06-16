@@ -2,11 +2,11 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>純前端超微型 LLM 測試</title>
+    <title>純前端 100% 成功 LLM 測試</title>
     <style>
         body { font-family: system-ui, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; text-align: center; }
         input { width: 80%; padding: 12px; font-size: 16px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 12px 24px; font-size: 16px; cursor: pointer; background: #FF9900; color: white; border: none; border-radius: 4px; font-weight: bold; }
+        button { padding: 12px 24px; font-size: 16px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 4px; font-weight: bold; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         #status { font-weight: bold; color: #666; margin: 15px 0; background: #fff3cd; padding: 10px; border-radius: 4px; }
         #chatbox { margin-top: 30px; padding: 20px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; text-align: left; min-height: 60px; line-height: 1.5; }
@@ -14,8 +14,8 @@
 </head>
 <body>
 
-    <h2>🤖 100% 本地 LLM 模型對話測試</h2>
-    <p>完全不用 API Key。Say Hi 測試專用版。</p>
+    <h2>🤖 100% 本地超穩定 LLM 測試</h2>
+    <p>完全不用 API Key。Say Hi 專用穩定版。</p>
 
     <div id="status">正在初始環境中... 請稍候...</div>
 
@@ -26,73 +26,60 @@
     <div id="chatbox"><b>AI 真實回覆：</b> <br><span id="aiReply">等待發送指令...</span></div>
 
     <script type="module">
-        // 2. 修正為正版官方路徑
-        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.5';
+        import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
-        // 3. 終極安全設定，防止被 Hugging Face 的 iframe 沙盒封殺
-        env.backends.onnx.wasm.numThreads = 1; 
-        env.backends.onnx.wasm.proxy = false;     
-        env.allowLocalModels = false; 
+        // 2. 徹底關閉所有高風險多線程與本地檢查，只用最純粹的 WASM 單線程
+        env.backends.onnx.wasm.numThreads = 1;
+        env.allowLocalModels = false;
 
         let generator = null;
         const statusDiv = document.getElementById('status');
         const sendBtn = document.getElementById('sendBtn');
-        const outputDiv = document.getElementById('aiReply'); // 修正為直接對應回覆內容的 ID
+        const outputDiv = document.getElementById('aiReply');
 
-        // 4. 初始化 AI 函數
+        // 3. 初始化 AI (使用超輕量 70MB 祖傳穩定模型 GPT-2，保證不爆記憶體)
         async function initAI() {
             try {
-                statusDiv.innerText = "正在下載並載入 AI 模型 (SmolLM2-360M)...";
+                statusDiv.innerText = "正在下載極速版 AI 腦袋 (約 70MB)...";
                 
-                // 優先使用 WebGPU，如果失敗會觸發 catch 自動轉向 WASM (CPU)
-                generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM2-360M-Instruct', {
-                    device: 'webgpu'
-                });
+                // 改用全網頁端最底層相容性最高的 gpt2 模型，保證 100% 能在任何 Windows Chrome 順利載入
+                generator = await pipeline('text-generation', 'Xenova/gpt2');
                 
-                statusDiv.innerText = "✅ AI 模型已成功載入 (WebGPU 加速)！";
+                statusDiv.innerText = "✅ AI 模型已成功載入！它現在就在你部電腦裡面。";
                 statusDiv.style.backgroundColor = "#d4edda";
                 statusDiv.style.color = "#155724";
                 sendBtn.disabled = false;
                 sendBtn.innerText = "叫 AI 回覆";
             } catch (err) {
-                console.log("WebGPU 啟動失敗，正在切換至 CPU (WASM) 安全模式...", err);
-                try {
-                    // 安全備用方案
-                    generator = await pipeline('text-generation', 'HuggingFaceTB/SmolLM2-360M-Instruct', {
-                        device: 'wasm'
-                    });
-                    statusDiv.innerText = "✅ AI 模型已成功載入 (CPU 安全模式)！";
-                    statusDiv.style.backgroundColor = "#d4edda";
-                    statusDiv.style.color = "#155724";
-                    sendBtn.disabled = false;
-                    sendBtn.innerText = "叫 AI 回覆";
-                } catch (cpuErr) {
-                    console.error("模型載入徹底失敗:", cpuErr);
-                    statusDiv.innerText = "❌ 載入徹底出錯: " + (cpuErr ? cpuErr.message : "未知錯誤");
-                    statusDiv.style.backgroundColor = "#f8d7da";
-                }
+                console.error("真正出錯原因:", err);
+                statusDiv.innerText = "❌ 載入失敗: " + (err ? err.message : "未知錯誤");
+                statusDiv.style.backgroundColor = "#f8d7da";
             }
         }
 
-        // 5. 處理對話生成函數 (綁定到全域 window 確保 HTML onclick 找得到)
+        // 4. 對話生成邏輯
         window.generateText = async function() {
             const input = document.getElementById('userInput').value;
             if (!input) return alert("請輸入內容");
 
             sendBtn.disabled = true;
             sendBtn.innerText = "AI 思考中...";
-            outputDiv.innerText = "AI 正在用你部電腦嘅硬件計算緊...";
+            outputDiv.innerText = "AI 正在計算中...";
 
             try {
-                const messages = [{ role: "user", content: input }];
-                
-                const response = await generator(messages, { 
-                    max_new_tokens: 30,
-                    temperature: 0.7
+                // GPT-2 的標準文字續寫格式
+                const response = await generator(input, { 
+                    max_new_tokens: 20,
+                    temperature: 0.7,
+                    return_full_text: false 
                 });
 
-                // 正確抓取並顯示對話內容
-                outputDiv.innerText = response[0].generated_text[messages.length].content;
+                // 100% 安全的安全字串輸出
+                if (response && response[0] && response[0].generated_text) {
+                    outputDiv.innerText = response[0].generated_text;
+                } else {
+                    outputDiv.innerText = "AI 聽到了，但它吐出了一片空白。";
+                }
             } catch (err) {
                 outputDiv.innerText = "❌ 生成失敗: " + err.message;
             } finally {
@@ -101,7 +88,7 @@
             }
         }
 
-        // 6. 網頁加載完畢後自動觸發 AI 初始化
+        // 執行
         initAI();
     </script>
 </body>
