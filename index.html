@@ -59,7 +59,7 @@ for i in range(4):
         const debugBox = document.getElementById('debug-box');
         const rawResponseSpan = document.getElementById('rawResponse');
 
-        // Initialize the highly stable English structural Chat model
+        // Initialize the English Chat model
         async function initAI() {
             try {
                 statusDiv.innerText = "⏳ Downloading ultra-lean AI core (Qwen 90MB) directly to browser memory...";
@@ -84,8 +84,8 @@ for i in range(4):
         // Diagnostic Logic
         window.generateDiagnostic = async function() {
             const codeInput = document.getElementById('userInput').value;
-            if (!codeInput.strip) {
-                if (!codeInput.trim()) return alert("Code workspace cannot be empty!");
+            if (!codeInput || !codeInput.trim()) {
+                return alert("Code workspace cannot be empty!");
             }
 
             sendBtn.disabled = true;
@@ -94,7 +94,7 @@ for i in range(4):
             debugBox.style.display = "none";
 
             try {
-                // Mocking the code execution error logs that your python script natively captures
+                // Mocking the code execution error logs that your framework natively captures
                 const simulatedErrorLog = "IndexError: list index out of range on line 3";
 
                 // Formulate an absolute airtight English prompt optimized for micro LLM architecture
@@ -107,14 +107,20 @@ for i in range(4):
 
                 const prompt = `<|im_start|>system\n${systemInstruction}<|im_end|>\n<|im_start|>user\nStudent Code:\n${codeInput}\n\nError Log:\n${simulatedErrorLog}<|im_end|>\n<|im_start|>assistant\n`;
 
-                const response = await generator(prompt, {{ 
+                const response = await generator(prompt, { 
                     max_new_tokens: 180,
-                    temperature: 0.2, // Keeps the model strict, fast, and structured
+                    temperature: 0.2, 
                     return_full_text: false 
-                }});
+                });
 
                 if (response && response[0] && response[0].generated_text) {
-                    let cleanedReply = response[0].generated_text.split('<|im_end|>')[0].trim();
+                    let cleanedReply = response[0].generated_text.split('<|im_end|>[0].trim()');
+                    // Additional safety cutoff for the specific token model
+                    if (cleanedReply.includes('<|im_end|>')) {
+                        cleanedReply = cleanedReply.split('<|im_end|>')[0].trim();
+                    } else {
+                        cleanedReply = cleanedReply.trim();
+                    }
                     
                     // Render formatting elements cleanly for reading or translation engines
                     let structuredHTML = cleanedReply
@@ -125,7 +131,7 @@ for i in range(4):
 
                     outputDiv.innerHTML = structuredHTML;
                     
-                    // Show debug info for PhD thesis tracing
+                    // Show debug info for validation
                     rawResponseSpan.innerText = cleanedReply;
                     debugBox.style.display = "block";
                 } else {
